@@ -1,7 +1,4 @@
-//#include "interface.hpp"
-
-extern "C" int add(int x, int y);
-extern "C" int subtract(int x, int y);
+#include "interface.hpp"
 
 int add(int x, int y)
 {

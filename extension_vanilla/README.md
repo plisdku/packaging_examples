@@ -34,7 +34,8 @@ These things are here for a reason.
 - `src` is home to the Python packages.  One is Python, one has a C++ extension.
 - `tests` has a smoke test.  Try `py.test .` and see if the binary got built and all.
 
-
+If I hadn't mentioned the `.hpp` files in the manifest then they would not have been included in the sdist.
+If you want to make do without the header file when you build the extension, just put the `extern "C"` function declarations into the `.cpp` file.  Well, it works for one file at least.  I tried it.
 
 ## Goal
 
