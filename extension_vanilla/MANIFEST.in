@@ -1,0 +1,4 @@
+recursive-include tests *.py
+recursive-include src *.hpp
+#include tests/pylintrc
+#include test/.coveragerc
