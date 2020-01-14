@@ -1,0 +1,78 @@
+How to distinguish C extensions from Python modules
+===================================================
+
+This function was presented on Stack Overflow.  It's by one Cecil Curry.
+
+https://stackoverflow.com/questions/20339053/in-python-how-can-one-tell-if-a-module-comes-from-a-c-extension
+
+```
+import inspect, os
+from importlib.machinery import ExtensionFileLoader, EXTENSION_SUFFIXES
+from types import ModuleType
+
+def is_c_extension(module: ModuleType) -> bool:
+    '''
+    `True` only if the passed module is a C extension implemented as a
+    dynamically linked shared library specific to the current platform.
+
+    Parameters
+    ----------
+    module : ModuleType
+        Previously imported module object to be tested.
+
+    Returns
+    ----------
+    bool
+        `True` only if this module is a C extension.
+    '''
+    assert isinstance(module, ModuleType), '"{}" not a module.'.format(module)
+
+    # If this module was loaded by a PEP 302-compliant CPython-specific loader
+    # loading only C extensions, this module is a C extension.
+    if isinstance(getattr(module, '__loader__', None), ExtensionFileLoader):
+        return True
+
+    # Else, fallback to filetype matching heuristics.
+    #
+    # Absolute path of the file defining this module.
+    module_filename = inspect.getfile(module)
+
+    # "."-prefixed filetype of this path if any or the empty string otherwise.
+    module_filetype = os.path.splitext(module_filename)[1]
+
+    # This module is only a C extension if this path's filetype is that of a
+    # C extension specific to the current platform.
+    return module_filetype in EXTENSION_SUFFIXES
+```
+
+Extension suffixes
+------------------
+
+```
+In [1]: import importlib.machinery
+
+In [2]: importlib.machinery.EXTENSION_SUFFIXES
+Out[2]: ['.cpython-37m-darwin.so', '.abi3.so', '.so']
+```
+
+MOTHER OF GOD
+
+```
+In [4]: getattr(nativepkg, '__loader__', None)
+Out[4]: <_frozen_importlib_external.SourceFileLoader at 0x108635810>
+```
+
+If this said "ExtensionFileLoader" then it would be an Extension.  Well, yes, my nativepkg actually does not export an initialization function, so how could it be seen as a C extension?
+
+```
+In [5]: import inspect
+In [6]: inspect.getfile(nativepkg)
+Out[6]: '/Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla/src/nativepkg/__init__.py'
+```
+
+Definitely not seeing the `.so` file.  But it is VERY cool to know that the `.cypython` crap is expected by Python somehow.
+
+
+
+
+#

@@ -1,0 +1,339 @@
+What distutils is doing
+=======================
+
+`distutils.cmd.Command` has helpful comments about what a command is.
+
+> Abstract base class for defining command classes, the "worker bees"
+  of the Distutils.  A useful analogy for command classes is to think of
+  them as subroutines with local variables called "options".  The options
+  are "declared" in 'initialize_options()' and "defined" (given their
+  final values, aka "finalized") in 'finalize_options()', both of which
+  must be defined by every command class.  The distinction between the
+  two is necessary because option values might come from the outside
+  world (command line, config file, ...), and any options dependent on
+  other options must be computed *after* these outside influences have
+  been processed -- hence 'finalize_options()'.  The "body" of the
+  subroutine, where it does all its work based on the values of its
+  options, is the 'run()' method, which must also be implemented by every
+  command class.
+
+>   'sub_commands' formalizes the notion of a "family" of commands,
+    eg. "install" as the parent with sub-commands "install_lib",
+    "install_headers", etc.  The parent of a family of commands
+    defines 'sub_commands' as a class attribute; it's a list of
+       (command_name : string, predicate : unbound_method | string | None)
+    tuples, where 'predicate' is a method of the parent command that
+    determines whether the corresponding command is applicable in the
+    current situation.  (Eg. we "install_headers" is only applicable if
+    we have any C header files to install.)  If 'predicate' is None,
+    that command is always applicable.
+    
+>   'sub_commands' is usually defined at the *end* of a class, because
+    predicates can be unbound methods, so they must already have been
+    defined.  The canonical example is the "install" command.
+
+Which commands are being invoked when I build a C/C++ extension?
+
+Commands during build
+---------------------
+
+I put a printout in the init function for a Command, both in setuptools and distutils.
+
+I removed the build dir then ran `build_ext`:
+
+```
+  $ python3 setup.py build_ext
+  running build_ext
+  PCH setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+  PCH self.class= <class 'setuptools.command.build_ext.build_ext'>
+  PCH setuptools command class: <class 'distutils.command.build.build'>
+  PCH self.class= <class 'distutils.command.build.build'>
+  building 'nativepkg' extension
+  creating build
+  creating build/temp.macosx-10.13-x86_64-3.7
+  creating build/temp.macosx-10.13-x86_64-3.7/src
+  creating build/temp.macosx-10.13-x86_64-3.7/src/nativepkg
+  clang -Wno-unused-result -Wsign-compare -Wunreachable-code -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/Tk.framework/Versions/8.5/Headers -I/usr/local/include -I/usr/local/opt/openssl@1.1/include -I/usr/local/opt/sqlite/include -I/usr/local/Cellar/python/3.7.5/Frameworks/Python.framework/Versions/3.7/include/python3.7m -c src/nativepkg/interface.cpp -o build/temp.macosx-10.13-x86_64-3.7/src/nativepkg/interface.o
+  creating build/lib.macosx-10.13-x86_64-3.7
+  clang++ -bundle -undefined dynamic_lookup build/temp.macosx-10.13-x86_64-3.7/src/nativepkg/interface.o -L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -L/usr/local/opt/sqlite/lib -o build/lib.macosx-10.13-x86_64-3.7/nativepkg.cpython-37m-darwin.so
+```
+
+---
+
+I removed the build dir and ran a `build` command.
+
+```
+$ python3 setup.py build
+  running build
+  PCH setuptools command class: <class 'distutils.command.build.build'>
+  PCH self.class= <class 'distutils.command.build.build'>
+  running build_py
+  PCH setuptools command class: <class 'setuptools.command.build_py.build_py'>
+  PCH self.class= <class 'setuptools.command.build_py.build_py'>
+  creating build
+  creating build/lib.macosx-10.13-x86_64-3.7
+  creating build/lib.macosx-10.13-x86_64-3.7/pythonpkg
+  copying src/pythonpkg/hello.py -> build/lib.macosx-10.13-x86_64-3.7/pythonpkg
+  copying src/pythonpkg/__init__.py -> build/lib.macosx-10.13-x86_64-3.7/pythonpkg
+  creating build/lib.macosx-10.13-x86_64-3.7/nativepkg
+  copying src/nativepkg/interface.py -> build/lib.macosx-10.13-x86_64-3.7/nativepkg
+  copying src/nativepkg/__init__.py -> build/lib.macosx-10.13-x86_64-3.7/nativepkg
+  running egg_info
+  PCH setuptools command class: <class 'setuptools.command.egg_info.egg_info'>
+  PCH self.class= <class 'setuptools.command.egg_info.egg_info'>
+  writing src/extension_vanilla.egg-info/PKG-INFO
+  writing dependency_links to src/extension_vanilla.egg-info/dependency_links.txt
+  writing top-level names to src/extension_vanilla.egg-info/top_level.txt
+  PCH setuptools command class: <class 'setuptools.command.egg_info.manifest_maker'>
+  PCH self.class= <class 'setuptools.command.egg_info.manifest_maker'>
+  PCH setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+  PCH self.class= <class 'setuptools.command.build_ext.build_ext'>
+  reading manifest file 'src/extension_vanilla.egg-info/SOURCES.txt'
+  reading manifest template 'MANIFEST.in'
+  writing manifest file 'src/extension_vanilla.egg-info/SOURCES.txt'
+  copying src/nativepkg/interface.cpp -> build/lib.macosx-10.13-x86_64-3.7/nativepkg
+  copying src/nativepkg/interface.hpp -> build/lib.macosx-10.13-x86_64-3.7/nativepkg
+  running build_ext
+  building 'nativepkg' extension
+  creating build/temp.macosx-10.13-x86_64-3.7
+  creating build/temp.macosx-10.13-x86_64-3.7/src
+  creating build/temp.macosx-10.13-x86_64-3.7/src/nativepkg
+  clang -Wno-unused-result -Wsign-compare -Wunreachable-code -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/Tk.framework/Versions/8.5/Headers -I/usr/local/include -I/usr/local/opt/openssl@1.1/include -I/usr/local/opt/sqlite/include -I/usr/local/Cellar/python/3.7.5/Frameworks/Python.framework/Versions/3.7/include/python3.7m -c src/nativepkg/interface.cpp -o build/temp.macosx-10.13-x86_64-3.7/src/nativepkg/interface.o
+  clang++ -bundle -undefined dynamic_lookup build/temp.macosx-10.13-x86_64-3.7/src/nativepkg/interface.o -L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -L/usr/local/opt/sqlite/lib -o build/lib.macosx-10.13-x86_64-3.7/nativepkg.cpython-37m-darwin.so
+```
+
+---
+
+I uninstalled `extension_vanilla` and removed the build dir and ran `pip install`.
+
+```
+  $ python3 -m pip --verbose install -e .
+  Created temporary directory: /private/var/folders/22/2npzx5351bj2ftx0rkh78z_00000gn/T/pip-ephem-wheel-cache-jf7uil56
+  Created temporary directory: /private/var/folders/22/2npzx5351bj2ftx0rkh78z_00000gn/T/pip-req-tracker-bs0cagd5
+  Created requirements tracker '/private/var/folders/22/2npzx5351bj2ftx0rkh78z_00000gn/T/pip-req-tracker-bs0cagd5'
+  Created temporary directory: /private/var/folders/22/2npzx5351bj2ftx0rkh78z_00000gn/T/pip-install-r0kv8te6
+  Obtaining file:///Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla
+    Added file:///Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla to build tracker '/private/var/folders/22/2npzx5351bj2ftx0rkh78z_00000gn/T/pip-req-tracker-bs0cagd5'
+      Running setup.py (path:/Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla/setup.py) egg_info for package from file:///Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla
+      Running command python setup.py egg_info
+      running egg_info
+      PCH setuptools command class: <class 'setuptools.command.egg_info.egg_info'>
+      PCH self.class= <class 'setuptools.command.egg_info.egg_info'>
+      writing src/extension_vanilla.egg-info/PKG-INFO
+      writing dependency_links to src/extension_vanilla.egg-info/dependency_links.txt
+      writing top-level names to src/extension_vanilla.egg-info/top_level.txt
+      PCH setuptools command class: <class 'setuptools.command.egg_info.manifest_maker'>
+      PCH self.class= <class 'setuptools.command.egg_info.manifest_maker'>
+      PCH setuptools command class: <class 'setuptools.command.build_py.build_py'>
+      PCH self.class= <class 'setuptools.command.build_py.build_py'>
+      PCH setuptools command class: <class 'distutils.command.build.build'>
+      PCH self.class= <class 'distutils.command.build.build'>
+      PCH setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+      PCH self.class= <class 'setuptools.command.build_ext.build_ext'>
+      reading manifest file 'src/extension_vanilla.egg-info/SOURCES.txt'
+      reading manifest template 'MANIFEST.in'
+      writing manifest file 'src/extension_vanilla.egg-info/SOURCES.txt'
+    Source in /Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla has version 0.0.1, which satisfies requirement extension-vanilla==0.0.1 from file:///Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla
+    Removed extension-vanilla==0.0.1 from file:///Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla from build tracker '/private/var/folders/22/2npzx5351bj2ftx0rkh78z_00000gn/T/pip-req-tracker-bs0cagd5'
+  Installing collected packages: extension-vanilla
+    Running setup.py develop for extension-vanilla
+      Running command /usr/local/opt/python/bin/python3.7 -c 'import sys, setuptools, tokenize; sys.argv[0] = '"'"'/Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla/setup.py'"'"'; __file__='"'"'/Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla/setup.py'"'"';f=getattr(tokenize, '"'"'open'"'"', open)(__file__);code=f.read().replace('"'"'\r\n'"'"', '"'"'\n'"'"');f.close();exec(compile(code, __file__, '"'"'exec'"'"'))' develop --no-deps
+      running develop
+      PCH setuptools command class: <class 'setuptools.command.develop.develop'>
+      PCH self.class= <class 'setuptools.command.develop.develop'>
+      PCH setuptools command class: <class 'setuptools.command.egg_info.egg_info'>
+      PCH self.class= <class 'setuptools.command.egg_info.egg_info'>
+      PCH setuptools command class: <class 'setuptools.command.install.install'>
+      PCH self.class= <class 'setuptools.command.install.install'>
+      PCH setuptools command class: <class 'distutils.command.build.build'>
+      PCH self.class= <class 'distutils.command.build.build'>
+      PCH setuptools command class: <class 'setuptools.command.install_lib.install_lib'>
+      PCH self.class= <class 'setuptools.command.install_lib.install_lib'>
+      PCH setuptools command class: <class 'setuptools.command.install_scripts.install_scripts'>
+      PCH self.class= <class 'setuptools.command.install_scripts.install_scripts'>
+      running egg_info
+      writing src/extension_vanilla.egg-info/PKG-INFO
+      writing dependency_links to src/extension_vanilla.egg-info/dependency_links.txt
+      writing top-level names to src/extension_vanilla.egg-info/top_level.txt
+      PCH setuptools command class: <class 'setuptools.command.egg_info.manifest_maker'>
+      PCH self.class= <class 'setuptools.command.egg_info.manifest_maker'>
+      PCH setuptools command class: <class 'setuptools.command.build_py.build_py'>
+      PCH self.class= <class 'setuptools.command.build_py.build_py'>
+      PCH setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+      PCH self.class= <class 'setuptools.command.build_ext.build_ext'>
+      reading manifest file 'src/extension_vanilla.egg-info/SOURCES.txt'
+      reading manifest template 'MANIFEST.in'
+      writing manifest file 'src/extension_vanilla.egg-info/SOURCES.txt'
+      running build_ext
+      building 'nativepkg' extension
+      creating build
+      creating build/temp.macosx-10.13-x86_64-3.7
+      creating build/temp.macosx-10.13-x86_64-3.7/src
+      creating build/temp.macosx-10.13-x86_64-3.7/src/nativepkg
+      clang -Wno-unused-result -Wsign-compare -Wunreachable-code -fno-common -dynamic -DNDEBUG -g -fwrapv -O3 -Wall -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/usr/include -I/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/Tk.framework/Versions/8.5/Headers -I/usr/local/include -I/usr/local/opt/openssl@1.1/include -I/usr/local/opt/sqlite/include -I/usr/local/Cellar/python/3.7.5/Frameworks/Python.framework/Versions/3.7/include/python3.7m -c src/nativepkg/interface.cpp -o build/temp.macosx-10.13-x86_64-3.7/src/nativepkg/interface.o
+      creating build/lib.macosx-10.13-x86_64-3.7
+      clang++ -bundle -undefined dynamic_lookup build/temp.macosx-10.13-x86_64-3.7/src/nativepkg/interface.o -L/usr/local/lib -L/usr/local/opt/openssl@1.1/lib -L/usr/local/opt/sqlite/lib -o build/lib.macosx-10.13-x86_64-3.7/nativepkg.cpython-37m-darwin.so
+      copying build/lib.macosx-10.13-x86_64-3.7/nativepkg.cpython-37m-darwin.so -> src
+      Creating /usr/local/lib/python3.7/site-packages/extension-vanilla.egg-link (link to src)
+      Adding extension-vanilla 0.0.1 to easy-install.pth file
+
+      Installed /Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla/src
+  PCH self.class= <class 'distutils.command.install.install'>
+  PCH self.class= <class 'distutils.command.build.build'>
+  Successfully installed extension-vanilla
+  Cleaning up...
+  Removed build tracker '/private/var/folders/22/2npzx5351bj2ftx0rkh78z_00000gn/T/pip-req-tracker-bs0cagd5'
+```
+
+Summary
+-------
+
+These are the initializations of setuptools and distutils classes for various commands.
+
+
+### Pip install
+```
+setuptools command class: <class 'setuptools.command.egg_info.egg_info'>
+self.class= <class 'setuptools.command.egg_info.egg_info'>
+setuptools command class: <class 'setuptools.command.egg_info.manifest_maker'>
+self.class= <class 'setuptools.command.egg_info.manifest_maker'>
+setuptools command class: <class 'setuptools.command.build_py.build_py'>
+self.class= <class 'setuptools.command.build_py.build_py'>
+setuptools command class: <class 'distutils.command.build.build'>
+self.class= <class 'distutils.command.build.build'>
+setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+self.class= <class 'setuptools.command.build_ext.build_ext'>
+setuptools command class: <class 'setuptools.command.develop.develop'>
+self.class= <class 'setuptools.command.develop.develop'>
+setuptools command class: <class 'setuptools.command.egg_info.egg_info'>
+self.class= <class 'setuptools.command.egg_info.egg_info'>
+setuptools command class: <class 'setuptools.command.install.install'>
+self.class= <class 'setuptools.command.install.install'>
+setuptools command class: <class 'distutils.command.build.build'>
+self.class= <class 'distutils.command.build.build'>
+setuptools command class: <class 'setuptools.command.install_lib.install_lib'>
+self.class= <class 'setuptools.command.install_lib.install_lib'>
+setuptools command class: <class 'setuptools.command.install_scripts.install_scripts'>
+self.class= <class 'setuptools.command.install_scripts.install_scripts'>
+setuptools command class: <class 'setuptools.command.egg_info.manifest_maker'>
+self.class= <class 'setuptools.command.egg_info.manifest_maker'>
+setuptools command class: <class 'setuptools.command.build_py.build_py'>
+self.class= <class 'setuptools.command.build_py.build_py'>
+setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+self.class= <class 'setuptools.command.build_ext.build_ext'>
+self.class= <class 'distutils.command.install.install'>
+self.class= <class 'distutils.command.build.build'>
+```
+
+### Build
+```
+setuptools command class: <class 'distutils.command.build.build'>
+self.class= <class 'distutils.command.build.build'>
+setuptools command class: <class 'setuptools.command.build_py.build_py'>
+self.class= <class 'setuptools.command.build_py.build_py'>
+setuptools command class: <class 'setuptools.command.egg_info.egg_info'>
+self.class= <class 'setuptools.command.egg_info.egg_info'>
+setuptools command class: <class 'setuptools.command.egg_info.manifest_maker'>
+self.class= <class 'setuptools.command.egg_info.manifest_maker'>
+setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+self.class= <class 'setuptools.command.build_ext.build_ext'>
+```
+
+### Build_ext
+```
+setuptools command class: <class 'setuptools.command.build_ext.build_ext'>
+self.class= <class 'setuptools.command.build_ext.build_ext'>
+setuptools command class: <class 'distutils.command.build.build'>
+self.class= <class 'distutils.command.build.build'>
+```
+
+Relevant commands
+-----------------
+
+- `egg_info.egg_info`:
+  - setuptools "create a distribution's .egg-info directory"
+  - setuptools.Command "Construct the command for dist, updating vars(self) with any keyword parameters"
+- `egg_info.manifest_maker`
+  - setuptools.command.sdist "smart sdist that finds anything supported by revision control"
+  - distutils.command.sdist "create a source distribution (tarball, zip file, etc.)"
+- `build_py.build_py`:
+  - distutils "build pure Python modules (copy to build directory)"
+  - setuptools "enhanced build_py command that includes data files with packages"
+- `build.build`: is this even subclassed by setuptools at all?
+  - distutils "build everything needed to install"
+- `build_ext.build_ext`
+  - distutils "Build C/C++ extensions (compile/link to build directory)"
+  - setuptools "Build extensions in build directory, then copy if --inplace"
+- `develop.develop` setuptools.command.develop, "Set up package for development".
+  - Inherits `easy_install`, `namespaces.DevelopInstaller`.
+- `install.install`: usually setuptools subclass, but distutils base class at end.
+  - distutils "install everything from build directory",
+  - setuptools "Use easy_install to install the package, w/dependencies"
+- `install_lib.install_lib`:
+  - distutils "install all Python modules (extensions and pure Python)",
+  - setuptools adds "Don't add compiled flags to filenames of non-Python files"
+- `install_scripts.install_scripts`:
+  - distutils "install scripts (Python or otherwise)",
+  - setuptools adds "do normal script install, plus any egg_info wrapper scripts"
+
+
+
+Calls to clang in `build_ext`
+-----------------------------
+
+First `clang` makes the o-files in build/temp, then `clang++` makes the .so files in build/lib.
+
+```
+clang [-W flags] [-fno-common -dynamic] [-DNDEBUG -g] [-fwrapv] [-O3] [-I...]
+  -c interface.cpp -o build/temp.macosx-.../interface.o
+```
+
+```
+clang++ -bundle -undefined dynamic_lookup build/temp.macosx-.../interface.o [-L...]
+  -o build/lib.macosx-.../nativepkg...so
+```
+
+Next the .so is copied to source (I think because I built in-place):
+```
+copying build/lib.macosx-10.13-x86_64-3.7/nativepkg.cpython-37m-darwin.so -> src
+```
+**CORRECTION: I did not have any in-place flag for this example.**  It must be the normal thing to copy it back into `src/`.
+
+Anyway that was the guts of the compilation.  When we are done with this, there is a `.so` file in src.  Pip install soon says
+```
+Installed /Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla/src
+```
+
+and there is an egg-link file in my site-packages, containing the link
+```
+/Users/paul/Documents/Work/Light/Development/packaging_examples/extension_vanilla/src
+```
+
+which (for completeness) looks like this:
+```
+src
+├── extension_vanilla.egg-info
+│   ├── PKG-INFO
+│   ├── SOURCES.txt
+│   ├── dependency_links.txt
+│   └── top_level.txt
+├── nativepkg
+│   ├── __init__.py
+│   ├── __pycache__
+│   │   ├── __init__.cpython-37.pyc
+│   │   └── interface.cpython-37.pyc
+│   ├── interface.cpp
+│   ├── interface.hpp
+│   └── interface.py
+├── nativepkg.cpython-37m-darwin.so
+└── pythonpkg
+    ├── __init__.py
+    ├── __pycache__
+    │   ├── __init__.cpython-37.pyc
+    │   └── hello.cpython-37.pyc
+    └── hello.py
+```
+
+So, from this point forward, when I say `import nativepkg`, ... there is one last thing I need to check on.  I did not write a "normal" Python extension, because a normal extension is a `.so` file that exports an initialization function.
+
+#

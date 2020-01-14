@@ -1,0 +1,35 @@
+PyPA Overview of Binary Extensions
+==================================
+
+Obviously, this is from the perspective of PyPA.
+
+https://packaging.python.org/guides/packaging-binary-extensions/
+
+Use cases
+---------
+
+1. **Accelerator modules:** self-contained; ideally have a pure-Python fallback
+2. **Wrapper modules:** expose interface directly or else expose a more Pythonic API
+3. **Low-level system access:** platform specific; could access Python interpreter internals.
+
+Disadvantages
+-------------
+
+Distribution of software is more difficult.  Because C/C++ needs custom binaries for different platforms, extensions
+- must be buildable from source or have binaries available
+- may be incompatible with different builds of CPython reference interpreter (meaning??)
+- often won't work with PyPy, IronPython, Jython, etc.
+
+
+
+
+
+
+
+
+
+
+
+
+
+#

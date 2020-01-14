@@ -1,6 +1,6 @@
 # Vanilla Extension Example
 
-Build and install a native C++ extension package and a normal Python package.
+Build and install a native C++ extension package and a normal Python package.  Uses standard C extension stuff, no CMake.
 
 Make sure that `python setup.py sdist` puts everything where it belongs and it works on Linux.
 

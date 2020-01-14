@@ -1,0 +1,23 @@
+Possible avenues
+================
+
+1. Try some `pybind11` examples.  
+2. Try some `scikit-build` examples.
+3. Learn all about `distutils`.
+4. Learn all about `setuptools`.
+
+I've had `distutils` on my mind so I will do that first for a couple hours.  One thing to look for is subclassing of `Extension`.  Also, "commands" as classes.
+
+Distutils/Setuptools
+--------------------
+
+I isolated the actual `clang` calls as being due to `build_ext` (a setuptools subclass of the distutils class).  This was around where my `CMake` extension attempts were not working before.
+
+I also determined that my `nativepkg` is being imported as a Python module not as a C extension, as expected.  Why expected?  Because I did not export an initialization function from the `nativepkg` binary.  It's not using `Python.h`.  Instead it's a normal pile of C++ with some `extern "C"` things for ctypes, plus some .py files that import ctypes and go from there.  I determined as well that the extension on my lib, some `.cpython...` thing, is one of the expected extensions for extensions in Python on my Mac.
+
+This gives me two action items.
+1. Implement a hello-world Python extension using "Python.h" and see if I can truly import a C extension module.  Does a C extension module need at least one .py file?  Where are the docstrings?
+2. Try again to figure out the CMake extension.  I saw that the build had two phases where it called clang.  There was also a file copy command because of my `-inplace` directive.  **CORRECTION I don't see any in-place thing in my current `nativepkg` setup script.**
+
+
+#
